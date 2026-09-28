@@ -1,0 +1,1493 @@
+openapi: 3.1.0
+info:
+  title: Template Editor Service
+  version: v1
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+security:
+- bearerAuth: []
+tags:
+- name: Projects
+  description: Lists GitLab projects the current authenticated user has access to.
+- name: Workspaces Comments
+  description: Kommentare und Replies für Merge-Request Reviews
+- name: Versions
+  description: List terminology versions for a given project and branch
+- name: Reviews
+  description: "Merge-Request Reviews (Liste, Approve + Merge)"
+- name: Workspaces
+  description: Workspace / branch handling and committing changes for terminology
+    packages
+- name: Auth
+  description: Authentication-related information for the current oauth2-proxy authenticated
+    user.
+paths:
+  /workspaces/commit:
+    post:
+      tags:
+      - Workspaces
+      summary: Commit workspace changes
+      description: Commits changes for a workspace (branch) using the given list of
+        file changes. Optionally opens a merge request.
+      operationId: commit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitRequest"
+        required: true
+      responses:
+        "200":
+          description: Changes successfully committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+      security:
+      - bearerAuth: []
+  /workspaces/commitFile:
+    post:
+      tags:
+      - Workspaces
+      summary: Upload File and commit it to a workspace
+      description: Uploads a file as a single repository file and commits it to the
+        given workspace (branch). The file is stored as base64 in the commit request.
+        Optionally opens a merge request.
+      operationId: commitFile
+      parameters:
+      - name: repositoryId
+        in: query
+        description: GitLab repository / project identifier
+        required: true
+        example: 1234
+      - name: branch
+        in: query
+        description: Target branch to commit to
+        required: true
+        example: feature/new-terminology
+      - name: version
+        in: query
+        description: Terminology package version
+        required: true
+        example: 1.0.3
+      - name: message
+        in: query
+        description: Commit message
+        required: true
+        example: Upload workspace.zip
+      - name: action
+        in: query
+        description: Commit action for the file
+        required: true
+        schema:
+          type: string
+          enum:
+          - create
+          - update
+        example: update
+      - name: fileName
+        in: query
+        description: Target file name in repository
+        required: true
+        example: workspace.zip
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                repositoryId:
+                  type: string
+                  description: GitLab repository / project identifier
+                  pattern: "^[0-9]+$"
+                branch:
+                  type: string
+                  description: Target branch to commit to
+                  pattern: "^[A-Za-z0-9._/-]+$"
+                version:
+                  type: string
+                  description: Terminology package version
+                  pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+                message:
+                  type: string
+                  description: Commit message
+                  pattern: "^[^\\p{Cntrl}]+$"
+                action:
+                  type: string
+                  description: Commit action for the file
+                  enum:
+                  - create
+                  - update
+                file:
+                  type: string
+                  format: binary
+                fileName:
+                  type: string
+                  description: Target file name in repository
+                  pattern: "^(?!.*\\.\\.)(?!.*[\\\\/])[A-Za-z0-9._;-]+$"
+              required:
+              - action
+              - branch
+              - file
+              - fileName
+              - message
+              - repositoryId
+              - version
+      responses:
+        "200":
+          description: File successfully committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommitResponse"
+      security:
+      - bearerAuth: []
+  /workspaces/comments:
+    get:
+      tags:
+      - Workspaces Comments
+      summary: Kommentare eines Merge Requests laden
+      description: Liest alle nicht-System-Kommentare aus GitLab Discussions und mappt
+        sie in das interne CommentsPayload.
+      operationId: getComments
+      parameters:
+      - name: repositoryId
+        in: query
+        description: GitLab Project/Repository ID
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]+$"
+        example: 12345
+      - name: mrId
+        in: query
+        description: Merge Request IID
+        required: true
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+        example: 17
+      - name: branch
+        in: query
+        description: Branch-Name
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9._/-]+$"
+        example: feature/my-branch
+      - name: version
+        in: query
+        description: Version/Tag des Templates (für Mapping/Resolver)
+        required: true
+        schema:
+          type: string
+          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+        example: 1.2.3
+      responses:
+        "200":
+          description: Kommentare erfolgreich geladen
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentsPayload"
+        "404":
+          description: Merge Request/Repository nicht gefunden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentsPayload"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentsPayload"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentsPayload"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentsPayload"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentsPayload"
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Workspaces Comments
+      summary: Inline-Kommentar erstellen
+      description: Erstellt eine neue GitLab Discussion an einer Dateiposition (newPath
+        + newLine).
+      operationId: createComment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Kommentar erstellt
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "404":
+          description: Merge Request/Datei nicht gefunden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+      security:
+      - bearerAuth: []
+  /workspaces/comments/reply:
+    post:
+      tags:
+      - Workspaces Comments
+      summary: Auf Thread antworten (und optional resolven)
+      description: "Erstellt eine Note in einer bestehenden Discussion. Wenn resolved=true,\
+        \ wird der Thread anschließend resolved."
+      operationId: reply
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplyRequest"
+        required: true
+      responses:
+        "201":
+          description: Reply erstellt
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "404":
+          description: Thread/MR nicht gefunden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CommentCreateResponse"
+      security:
+      - bearerAuth: []
+  /reviews/approve:
+    post:
+      tags:
+      - Reviews
+      summary: Approve und Auto-Merge triggern
+      description: Führt zuerst Approve aus und triggert danach das Merge (should_remove_source_branch=true).
+        Response ist aktuell ein String-Text.
+      operationId: approveAndMergeMR
+      parameters:
+      - name: projectId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: mrId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      responses:
+        "200":
+          description: Approve + Merge wurde getriggert
+          content:
+            '*/*':
+              schema:
+                type: string
+        "404":
+          description: Projekt oder MR nicht gefunden
+          content:
+            '*/*':
+              schema:
+                type: string
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                type: string
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                type: string
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                type: string
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                type: string
+      security:
+      - bearerAuth: []
+  /workspaces:
+    get:
+      tags:
+      - Workspaces
+      summary: List branches (workspaces) for a terminology package
+      description: Returns all branches (workspaces) that contain the given package
+        and version in the repository.
+      operationId: listBranches
+      parameters:
+      - name: repositoryId
+        in: query
+        description: GitLab repository / project identifier
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]+$"
+        example: 1234
+      responses:
+        "200":
+          description: Branches successfully listed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BranchItem"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BranchItem"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BranchItem"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BranchItem"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BranchItem"
+      security:
+      - bearerAuth: []
+  /workspaces/openByMR:
+    get:
+      tags:
+      - Workspaces
+      summary: Open workspace by merge request
+      description: Loads workspace details for the branch associated with the given
+        merge request.
+      operationId: openByMr
+      parameters:
+      - name: projectId
+        in: query
+        description: GitLab project identifier of the merge request
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]+$"
+        example: 1234
+      - name: mrId
+        in: query
+        description: Merge request IID (internal ID within the project)
+        required: true
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+        example: 42
+      - name: version
+        in: query
+        description: Terminology package version
+        required: true
+        schema:
+          type: string
+          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+        example: 1.0.3
+      responses:
+        "200":
+          description: Workspace successfully loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "404":
+          description: Merge request or associated workspace not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+      security:
+      - bearerAuth: []
+  /workspaces/details:
+    get:
+      tags:
+      - Workspaces
+      summary: Get workspace details for a branch
+      description: "Returns all workspace files (templates, metadata, changelog, notes,\
+        \ …) for the given repository/branch/version."
+      operationId: details
+      parameters:
+      - name: repositoryId
+        in: query
+        description: GitLab repository / project identifier
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]+$"
+        example: 1234
+      - name: branch
+        in: query
+        description: Branch name (workspace) to open
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9._/-]+$"
+        example: feature/new-terminology
+      - name: version
+        in: query
+        description: Terminology package version
+        required: true
+        schema:
+          type: string
+          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+        example: 1.0.3
+      responses:
+        "200":
+          description: Workspace successfully loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetails"
+      security:
+      - bearerAuth: []
+  /reviews:
+    get:
+      tags:
+      - Reviews
+      summary: Merge Requests listen
+      description: Listet Merge Requests aus GitLab (Gruppen-scope inkl. Subgroups).
+      operationId: listReviews
+      parameters:
+      - name: state
+        in: query
+        required: false
+        schema:
+          type: string
+          default: opened
+          pattern: ^(opened|merged|closed|all)$
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          maximum: 10000
+          minimum: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+      responses:
+        "200":
+          description: Liste von Reviews
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewsOverviewItem"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewsOverviewItem"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewsOverviewItem"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewsOverviewItem"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewsOverviewItem"
+      security:
+      - bearerAuth: []
+  /projects:
+    get:
+      tags:
+      - Projects
+      summary: List GitLab projects
+      description: "Returns a paginated list of GitLab projects, optionally searchable\
+        \ and sortable."
+      operationId: listProjects
+      parameters:
+      - name: search
+        in: query
+        description: Filters projects by substring match in name
+        required: false
+        schema:
+          type: string
+          pattern: "^[\\p{L}0-9 _\\-.]*$"
+        example: template
+      - name: sort
+        in: query
+        description: Sort order of projects
+        required: false
+        schema:
+          type: string
+          enum:
+          - lastModified
+          - title
+        example: lastModified
+      - name: page
+        in: query
+        description: 1-based page index
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          maximum: 10000
+          minimum: 1
+        example: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page (1–200)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+        example: 50
+      responses:
+        "200":
+          description: Projects successfully listed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectItem"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectItem"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectItem"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectItem"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectItem"
+      security:
+      - bearerAuth: []
+  /projects/{projectId}/versions:
+    get:
+      tags:
+      - Versions
+      summary: List terminology versions for a project
+      description: "Returns all known terminology versions for the given project.\
+        \ If `workspace` is not provided, the project's default branch is used."
+      operationId: listVersions
+      parameters:
+      - name: projectId
+        in: path
+        description: GitLab project numeric identifier (ID)
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]+$"
+        example: 1234
+      - name: workspace
+        in: query
+        description: "Branch name (workspace). If omitted, the default branch is used."
+        required: false
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9._/-]+$"
+        example: feature/new-terminology
+      responses:
+        "200":
+          description: Versions successfully listed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionItem"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionItem"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionItem"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionItem"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionItem"
+      security:
+      - bearerAuth: []
+  /auth/userinfo:
+    get:
+      tags:
+      - Auth
+      summary: Get current user information
+      description: "Returns information about the currently authenticated user, including\
+        \ backend reviewer mapping."
+      operationId: userinfo
+      responses:
+        "200":
+          description: User information successfully resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetailsSub"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetailsSub"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetailsSub"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetailsSub"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetailsSub"
+      security:
+      - bearerAuth: []
+  /projects/{projectId}/versions/{version}:
+    delete:
+      tags:
+      - Versions
+      summary: Delete a terminology version
+      operationId: deleteVersion
+      parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]+$"
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9._-]+$"
+      - name: workspace
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9._/-]+$"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Version not found
+        "400":
+          description: Bad Request – validation failed
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    CommitChange:
+      type: object
+      description: Single file change that will be part of a workspace commit
+      properties:
+        action:
+          type: string
+          description: Type of file operation
+          enum:
+          - create
+          - update
+          - delete
+          example: update
+        type:
+          type: string
+          description: Logical file type within the terminology package
+          enum:
+          - template
+          - template_markdown
+          - package_template
+          - metadata_package
+          - changelogs
+          - package_markdown
+          - update_index_url_version
+          - download_conditions
+          - input_file
+          example: template
+        fileName:
+          type: string
+          description: File path relative to the package root
+          example: input/templates/medication.template.json
+          minLength: 1
+        content:
+          type:
+          - string
+          - "null"
+          description: File content. Required for create/update. Omitted for delete.
+          example: "{ \"resourceType\": \"Bundle\", ... }"
+        encoding:
+          type: string
+          description: Encoding of the content
+          enum:
+          - text
+          - base64
+          example: text
+        contentValidForAction:
+          type: boolean
+        base64ValidIfNeeded:
+          type: boolean
+        fileValid:
+          type: boolean
+        fileNameValidForType:
+          type: boolean
+      required:
+      - action
+      - encoding
+      - fileName
+      - type
+    CommitRequest:
+      type: object
+      description: Commit request for a workspace / branch in a repository
+      properties:
+        repositoryId:
+          type: string
+          description: GitLab repository / project identifier
+          example: "1234"
+          minLength: 1
+          pattern: "^[0-9]+$"
+        branch:
+          type: string
+          description: Target branch to commit to
+          example: feature/new-terminology
+          minLength: 1
+          pattern: "^[A-Za-z0-9._/-]+$"
+        version:
+          type: string
+          description: Terminology package version
+          example: 1.0.3
+          minLength: 1
+          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+        message:
+          type: string
+          description: Commit message
+          example: Update medication templates and changelog
+          minLength: 1
+          pattern: "^[^\\p{Cntrl}]+$"
+        changes:
+          type: array
+          description: List of file changes to be applied in this commit
+          items:
+            $ref: "#/components/schemas/CommitChange"
+          maxItems: 50
+          minItems: 1
+        createMergeRequest:
+          type: boolean
+          description: "If true, a merge request will be created for this commit"
+          example: true
+      required:
+      - branch
+      - message
+      - repositoryId
+      - version
+    CommitResponse:
+      type: object
+      description: Response after committing workspace changes
+      properties:
+        commitId:
+          type: string
+          description: Git commit SHA
+          example: 5e8c1f0b3a9d4c2e7f1b0a...
+        head:
+          type: string
+          description: Branch head after the commit (usually the same SHA as commitId)
+          example: 5e8c1f0b3a9d4c2e7f1b0a...
+        mergeRequest:
+          oneOf:
+          - $ref: "#/components/schemas/MergeRequestRef"
+          - type: "null"
+    MergeRequestRef:
+      type: object
+      description: Merge request that was created for the commit
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Merge request IID
+          example: 42
+        webUrl:
+          type: string
+          description: GitLab web URL of the merge request
+          example: https://gitlab.example.com/group/project/-/merge_requests/42
+    CommentCreateRequest:
+      type: object
+      description: Request zum Erstellen eines Merge-Request Inline-Kommentars (GitLab
+        Discussion).
+      properties:
+        repositoryId:
+          type: string
+          description: "GitLab Projekt-ID (wird als `projects/{id}` verwendet)."
+          example: "12345"
+          minLength: 1
+          pattern: "^[0-9]+$"
+        branch:
+          type: string
+          description: "Branch, der zur ResourceIndex-Auflösung verwendet wird."
+          example: feature/my-branch
+          minLength: 1
+          pattern: "^[A-Za-z0-9._/-]+$"
+        mrId:
+          type: string
+          description: Merge-Request IID als String.
+          example: "17"
+          minLength: 1
+          pattern: "^[0-9]+$"
+        version:
+          type: string
+          description: Version-Prefix im Repo (z.B. Ordner `<version>/...`).
+          example: 1.2.3
+          minLength: 1
+          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+        type:
+          type: string
+          description: "Art der kommentierten Resource. Bestimmt, wie `fileName` in\
+            \ einen GitLab-Pfad gemappt wird."
+          enum:
+          - template
+          - template_markdown
+          - package_template
+          - metadata_package
+          - changelogs
+          - package_markdown
+          - update_index_url_version
+          - download_conditions
+          - input_file
+          example: template
+        fileName:
+          type: string
+          description: Identifier der Datei/Resource abhängig vom `type`.
+          example: my.template.json
+          minLength: 1
+        line:
+          type:
+          - integer
+          - "null"
+          format: int32
+          description: Zeilennummer in der Diff-Position. Muss gesetzt sein.
+          example: 42
+          minimum: 1
+        body:
+          type: string
+          description: Kommentartext für GitLab Discussion/Note.
+          example: Bitte hier die Formulierung anpassen.
+          minLength: 1
+          pattern: "^[^\\p{Cntrl}]+$"
+      required:
+      - body
+      - branch
+      - fileName
+      - line
+      - mrId
+      - repositoryId
+      - type
+      - version
+    CommentCreateResponse:
+      type: object
+      description: Response nach dem Erstellen eines Kommentars oder Replies. Enthält
+        die ID der erzeugten GitLab Note/Discussion.
+      properties:
+        id:
+          type: string
+          description: ID der erstellten GitLab Note bzw. Discussion.
+          example: "123456789"
+    ReplyRequest:
+      type: object
+      description: Request zum Antworten auf eine bestehende GitLab Discussion (Thread).
+      properties:
+        repositoryId:
+          type: string
+          writeOnly: true
+        mrId:
+          type: integer
+          format: int32
+          description: Merge Request IID.
+          example: 17
+          minimum: 1
+        threadId:
+          type: string
+          description: ID der GitLab Discussion (Thread).
+          example: 61568f79f53237eb15af304384ef50fa8d3d8ee9
+          minLength: 1
+          pattern: "^[0-9a-fA-F]+$"
+        body:
+          type: string
+          description: Text der Antwort (GitLab Note).
+          example: "Erledigt, habe ich angepasst."
+          minLength: 1
+          pattern: "^[^\\p{Cntrl}]+$"
+        resolved:
+          type: boolean
+          description: "Wenn true, wird der Thread nach dem Antworten als resolved\
+            \ markiert."
+          example: true
+        repo:
+          type: string
+          description: GitLab Projekt-ID (Repository).
+          example: "12345"
+          minLength: 1
+          pattern: "^[0-9]+$"
+      required:
+      - body
+      - repo
+      - threadId
+    BranchItem:
+      type: object
+      description: Represents a workspace branch for a terminology package
+      properties:
+        branch:
+          type: string
+          description: Branch name (workspace name)
+          example: feature/new-terminology
+        lastModified:
+          type:
+          - string
+          - "null"
+          format: date-time
+          description: Timestamp of the last modification in this branch related to
+            the package
+          example: 2024-10-31T14:23:00+01:00
+        author:
+          type:
+          - string
+          - "null"
+          description: Author of the last relevant change
+          example: max.mustermann
+        isDefaultBranch:
+          type: boolean
+          writeOnly: true
+        isProtected:
+          type: boolean
+          writeOnly: true
+        mergeRequest:
+          $ref: "#/components/schemas/MergeRequestRef"
+          writeOnly: true
+        default:
+          type: boolean
+          description: Boolean if branch is default branch
+          example: true
+        protected:
+          type: boolean
+          description: Boolean if branch is protected branch
+          example: true
+        mergeRequestRef:
+          oneOf:
+          - $ref: "#/components/schemas/MergeRequestRef"
+          - type: "null"
+    InputFile:
+      type: object
+      properties:
+        name:
+          type: string
+        lastModified:
+          type: string
+          format: date-time
+    TemplateJsonItem:
+      type: object
+      properties:
+        name:
+          type: string
+        json:
+          type: string
+    TemplateMdItem:
+      type: object
+      properties:
+        canonicalUrl:
+          type: string
+          writeOnly: true
+        markdown:
+          type: string
+        version:
+          type: string
+        url:
+          type: string
+    WorkspaceDetails:
+      type: object
+      description: "Workspace content (templates, metadata, changelog, and editor\
+        \ notes) for a terminology package in a branch"
+      properties:
+        templatesJson:
+          type: array
+          items:
+            $ref: "#/components/schemas/TemplateJsonItem"
+          writeOnly: true
+        templatesMd:
+          type: array
+          items:
+            $ref: "#/components/schemas/TemplateMdItem"
+          writeOnly: true
+        packageTemplateJson:
+          type: string
+          description: Content of package.template.json (input/templates/package/package.template.json)
+          example: "{ \"url\": \"...\", ... }"
+        metadatenJson:
+          type: string
+          writeOnly: true
+        changelogsJson:
+          type: string
+          description: Content of changelog.json (metadata/changelog.json)
+        externalSourcesMd:
+          type: string
+          description: Markdown content for externalSources.md (metadata/website/package/externalSources.md)
+        fhirConversionNotesMd:
+          type: string
+          description: Markdown content for fhirConversionNotes.md (metadata/website/package/fhirConversionNotes.md)
+        noteOnAuthorMd:
+          type: string
+          description: Markdown content for noteOnAuthor.md (metadata/website/package/noteOnAuthor.md)
+        notesOnUpdateCyclesMd:
+          type: string
+          description: Markdown content for notesOnUpdateCycles.md (metadata/website/package/notesOnUpdateCycles.md)
+        downloadConditionsXml:
+          type: string
+          description: Markdown content for descriptionGeneric.md (metadata/download-conditions.md
+        descriptionGenericMd:
+          type: string
+          description: Markdown content for descriptionGeneric.md (metadata/website/package/descriptionGeneric.md)
+        inputFiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/InputFile"
+          writeOnly: true
+        mergeRequest:
+          $ref: "#/components/schemas/MergeRequestRef"
+          writeOnly: true
+        templateJsons:
+          type: array
+          description: List of template files in the workspace (input/templates/*.template.json)
+          items:
+            $ref: "#/components/schemas/TemplateJsonItem"
+        templateMds:
+          type: array
+          description: List of template markdowns metadata/website/resources-description/*.md
+            via index.json
+          items:
+            $ref: "#/components/schemas/TemplateMdItem"
+        metadataJson:
+          type: string
+          description: Content of metadata_package.json (metadata/metadata_package.json)
+        inputFileList:
+          type: array
+          description: Input TFC files (input/*)
+          items:
+            $ref: "#/components/schemas/InputFile"
+        mergeRequestRef:
+          oneOf:
+          - $ref: "#/components/schemas/MergeRequestRef"
+          - type: "null"
+    CommentItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type:
+          - string
+          - "null"
+          description: Typ der Änderung/Resource. Serialisiert als String gemäß `value`.
+          enum:
+          - template
+          - template_markdown
+          - package_template
+          - metadata_package
+          - changelogs
+          - package_markdown
+          - update_index_url_version
+          - download_conditions
+          - input_file
+        fileName:
+          type:
+          - string
+          - "null"
+        line:
+          type:
+          - integer
+          - "null"
+          format: int32
+        body:
+          type: string
+        author:
+          type:
+          - string
+          - "null"
+        createdAt:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+        threadId:
+          type:
+          - string
+          - "null"
+        isInline:
+          type: boolean
+          writeOnly: true
+        inline:
+          type: boolean
+    CommentsPayload:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommentItem"
+    ReviewsOverviewItem:
+      type: object
+      description: Übersichtseintrag eines Merge Requests für die Review-Liste.
+      properties:
+        mergeRequest:
+          $ref: "#/components/schemas/MergeRequestRef"
+          writeOnly: true
+        projectId:
+          type: string
+          description: "GitLab Projekt-ID, zu dem der Merge Request gehört."
+          example: "12345"
+        mr:
+          $ref: "#/components/schemas/MergeRequestRef"
+          description: Referenz auf den Merge Request (IID + Web-URL).
+    ProjectItem:
+      type: object
+      description: A GitLab project entry
+      properties:
+        projectId:
+          type: integer
+          format: int64
+          description: Internal GitLab project ID
+          example: 1278
+        title:
+          type: string
+          description: 'Project title '
+          example: OPS Terminologies for BfArM
+        lastModified:
+          type: string
+          format: date-time
+          description: Timestamp of last change
+          example: 2024-10-31T14:23:00Z
+        description:
+          type: string
+          description: Description of GitLab repository
+          example: Example Project
+    VersionItem:
+      type: object
+      description: Represents a single version of a terminology resource in a given
+        branch
+      properties:
+        version:
+          type: string
+          description: Version identifier of the terminology resource
+          example: 1.0.3
+        lastModified:
+          type: string
+          format: date-time
+          description: Last modification timestamp of this version in the given branch
+          example: 2024-10-31T14:23:00+01:00
+    UserDetailsSub:
+      type: object
+      description: Details about the currently authenticated GitLab user
+      properties:
+        email_verified:
+          type: boolean
+          description: Indicates whether the email address is verified
+          example: true
+          writeOnly: true
+        is_reviewer:
+          type: boolean
+          description: True if the user is member of the GitLab reviewers group (can
+            approve MRs)
+          example: true
+          writeOnly: true
+        name:
+          type: string
+        email:
+          type: string
+        emailVerified:
+          type: boolean
+        groups:
+          type: array
+          items:
+            type: string
+        reviewer:
+          type: boolean
+  securitySchemes:
+    bearerAuth:
+      type: http
+      in: header
+      scheme: bearer
+      bearerFormat: GitLab access token

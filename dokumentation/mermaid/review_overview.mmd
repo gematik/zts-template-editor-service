@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as User/Browser
+    participant FE as Frontend
+    participant BE as Backend
+    participant GL as GitLab API
+    U ->> FE: Öffnet "Meine Reviews"
+    FE ->> BE: GET /reviews?group=ns/subgroup/group&include=summary,comments,details
+    BE ->> BE: app_token prüfen -> gitlab_access_token
+    BE ->> GL: GET /groups/:groupId/merge_requests?scope=assigned_to_me&state=opened&include_subgroups=true&per_page=100
+    GL -->> BE: [ { id, project_id, sourceBranch, targetBranch, labels, title, user_notes_count, webUrl, ... } ]
+
+    loop je MR (optional, parallel limitiert)
+        BE ->> GL: GET /projects/:pid/merge_requests/:id/discussions?per_page=100
+        GL -->> BE: [ discussions... ]
+        BE ->> BE: comments[]= map(file,line,body,author,createdAt,threadId,resolved)
+    end
+
+    loop je MR (optional, parallel limitiert)
+        BE ->> GL: GET /projects/:pid
+        GL -->> BE: { id, path_with_namespace, default_branch }
+        BE ->> GL: GET /projects/:pid/repository/commits/:sha? %% falls base/head gebraucht (optional)
+        GL -->> BE: ...
+        BE ->> BE: workspaceParams ableiten: repo = path_with_namespace branch = sourceBranch basePath (packageName/version[/resource]) aus: a) MR-Description YAML/JSON-Block (wenn vorhanden), sonst b) MR-Diff-Pfade Heuristik (erstes geändertes <pkg>/<ver>/... Matching)
+    end
+
+    BE -->> FE: 200 [ { mr, project, commentSummary, comments?, workspaceParams? } ... ]
+    FE -->> U: Liste rendern (Klick -> open_workspace mit workspaceParams)
