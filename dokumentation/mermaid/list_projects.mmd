@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    actor U as User/Browser
+    participant FE as Frontend
+    participant BE as Backend
+    participant GL as GitLab API
+
+    U->>FE: Öffnet "Projekte"
+    FE->>BE: GET /projects  (Authorization: app_token)
+    BE->>BE: Validiert app_token -> resolve gitlab_access_token
+    BE->>GL: GET /groups/:groupId/projects?with_shared=false&archived=false&per_page=100
+    GL-->>BE: [ {id, path, name, ...} ]
+
+    loop Für jedes Projekt
+        BE->>GL: GET /projects/:id/repository/tree?path=packages&per_page=100
+        GL-->>BE: [ package-Folder ... ]
+        BE->>GL: GET /projects/:id  (oder /projects/:id/repository/branches/main bzw. commits)
+        GL-->>BE: { name, description, default_branch, ... }
+        BE->>GL: GET /projects/:id/repository/commits?ref_name=main&per_page=1
+        GL-->>BE: [{ committed_date }]
+        BE->>BE: Map auf {packageName, title, lastModified}
+    end
+
+    BE-->>FE: 200 [ {repo-id, packageName, title, lastModified}... ]
+    FE-->>U: Liste rendern (Sortierung nach lastModified)

@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor U as User/Browser
+    participant FE as Frontend
+    participant BE as Backend
+    participant GL as GitLab API
+
+    U->>FE: Kommentar eingeben (file + Zeile + Text)
+    FE->>BE: POST /workspaces/comments { ... }
+    BE->>BE: app_token prüfen -> gitlab_access_token
+
+    BE->>GL: GET /projects/:id
+    GL-->>BE: { id, default_branch }
+
+    BE->>GL: GET /projects/:id/merge_requests?state=opened&sourceBranch=<branch>&targetBranch=<target>
+    GL-->>BE: [ MR? ]
+
+    alt MR existiert
+        BE->>GL: GET /projects/:id/merge_requests/:id            <!-- Diff-Refs besorgen -->
+        GL-->>BE: { diff_refs: { base_sha, start_sha, head_sha } }
+
+        alt Datei im MR-Diff vorhanden UND line angegeben
+            BE->>GL: POST /projects/:id/merge_requests/:id/discussions
+            Note right of BE: body + position {position_type:'text', new_path, new_line, base_sha, start_sha, head_sha}
+            GL-->>BE: { id: disc_abc, notes:[...] }
+            BE-->>FE: 201 { id: "disc_abc#note_1" }
+        else (kein Diff oder keine line)
+            BE->>GL: POST /projects/:id/merge_requests/:id/notes { body: "[metadata.json] ..."}
+            GL-->>BE: { id: note_123 }
+            BE-->>FE: 201 { id: "note_123" }
+        end
+    else kein MR
+        alt containsDiffSuggestion == true
+            BE-->>FE: 409 { error: "NO_MR", hint: "Erst MR erstellen" }
+        else
+            BE-->>FE: 409 { error: "NO_MR" }
+        end
+    end

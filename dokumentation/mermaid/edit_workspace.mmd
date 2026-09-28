@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    actor U as User/Browser
+    participant FE as Frontend
+    participant BE as Backend
+    participant GL as GitLab API
+
+    U->>FE: Editiert Inhalte + Commit-Text
+    FE->>BE: POST /workspaces/commit {repo, branch, basePath, changes[], message, expectedHead}
+    BE->>BE: app_token prüfen -> gitlab_access_token
+    BE->>GL: GET /projects/:id/repository/branches/:branch
+    GL-->>BE: { commit: { id: HEAD } }
+
+    alt HEAD != expectedHead (falls mitgeliefert)
+        BE-->>FE: 409 Conflict (Branch hat neue Commits)
+    else OK
+        BE->>BE: changes -> GitLab actions mappen (create/update/delete, file_path, content)
+        BE->>GL: POST /projects/:id/repository/commits { branch, commit_message, actions[] }
+        GL-->>BE: { id: newCommit, stats, ... }
+        BE-->>FE: 200 { commitId: newCommit, head: newCommit, summary: stats }
+    end

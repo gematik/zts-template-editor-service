@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor U as User/Browser
+    participant FE as Frontend
+    participant BE as Backend
+    participant GL as GitLab API
+
+    U->>FE: Klickt auf Projekt-Version
+    FE->>BE: GET /workspaces?repo=...&packageName=...&version=...&resource=...
+    BE->>BE: Validiert app_token -> resolve gitlab_access_token
+
+    BE->>GL: GET /projects/:id/repository/branches?per_page=100
+    GL-->>BE: [ {name, ...}, ... ]
+
+    loop Für jeden Branch
+        BE->>GL: GET /projects/:id/repository/commits?ref_name=<branch>&path=<packageName>/<version>&per_page=1
+        GL-->>BE: [ { id, committed_date, author_name } ] ODER []
+        BE->>BE: Wenn Liste nicht leer -> Branch aufnehmen
+    end
+
+    BE->>BE: Sicherstellen: default_branch ist immer enthalten (auch ohne Commits am Pfad)
+    BE-->>FE: 200 [ { branch, lastModified?, author? } ... ]
+    FE-->>U: Liste „Arbeitsbereiche“ anzeigen (Main oben)

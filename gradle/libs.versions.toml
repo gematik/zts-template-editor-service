@@ -1,0 +1,115 @@
+[versions]
+kotlin = "2.4.20"
+#sonarqube = "7.3.0.8198"
+spring-boot = "4.1.1"
+spring-boot-openapi = "3.1.1"
+spring-boot-openapi-gradle-plugin = "1.9.0"
+spring-dependency-management = "1.1.7"
+commons-lang3 = "3.20.0"
+
+logback = "1.6.4"
+logback-encoder = "9.0"
+janino = "3.1.12"
+kotest-runner-junit = "6.2.5"
+mockk = "1.14.11"
+spring-mockk = "5.0.1"
+assertj-core = "3.27.7"
+jackson = "3.2.3"
+mockwebserver = "5.5.0"
+prometheus = "1.17.1"
+
+jackson-com = "2.22.3"
+jackson-annotations = "2.22"
+
+jmh = "1.37"
+jmh-plugin = "0.7.3"
+
+[libraries]
+spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
+spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
+spring-boot-openapi-starter-webflux = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "spring-boot-openapi" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-jackson = { module = "org.springframework.boot:spring-boot-jackson" }
+jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+jackson-xml = { module = "tools.jackson.dataformat:jackson-dataformat-xml", version.ref = "jackson" }
+
+jackson-com = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson-com" }
+jackson-com-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson-com" }
+jackson-tool = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
+jackson-tool-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
+
+jackson-com-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson-annotations" }
+
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-webflux-test = { module = "org.springframework.boot:spring-boot-webflux-test" }
+
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+logback-core = { module = "ch.qos.logback:logback-core", version.ref = "logback" }
+logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logback-encoder" }
+codehaus-janino = { module = "org.codehaus.janino:janino", version.ref = "janino" }
+
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+micromenter-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "prometheus" }
+
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest-runner-junit" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+springmockk = { module = "com.ninja-squad:springmockk", version.ref = "spring-mockk" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }
+
+jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
+jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
+
+mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "mockwebserver" }
+
+# patches
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" } # fixes CVE-2025-48924 of org.springdoc:springdoc-openapi-starter-webflux-api
+
+[bundles]
+spring-boot = [
+    "spring-boot-starter",
+    "spring-boot-starter-webflux",
+    "spring-boot-openapi-starter-webflux",
+    "spring-boot-starter-security",
+    "spring-boot-starter-actuator",
+    "spring-boot-jackson"
+]
+
+logback = [
+    "logback-classic",
+    "logback-core",
+    "logback-encoder"
+]
+
+jackson = [
+    "jackson-module-kotlin",
+    "jackson-xml"
+]
+
+test-junit5-kotest = [
+    "kotlin-test",
+    "kotlin-test-junit5",
+    "kotest-runner-junit5",
+]
+
+patches = [
+    "commons-lang3",
+    "jackson-com",
+    "jackson-com-databind",
+    "jackson-com-annotations",
+    "jackson-tool",
+    "jackson-tool-databind"
+]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-plugin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+#sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-boot-openapi = { id = "org.springdoc.openapi-gradle-plugin", version.ref = "spring-boot-openapi-gradle-plugin" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+jacoco = { id = "jacoco" }
+jmh = { id = "me.champeau.jmh", version.ref = "jmh-plugin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }

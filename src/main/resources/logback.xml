@@ -1,0 +1,42 @@
+<configuration>
+  <!-- Console JSON -->
+  <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+      <providers>
+        <timestamp>
+          <fieldName>time</fieldName>
+        </timestamp>
+
+        <pattern>
+          <pattern>
+            {"severity":"%replace(%replace(%level){'TRACE','DEBUG'}){'WARN','WARNING'}"}
+          </pattern>
+        </pattern>
+
+        <loggerName>
+          <fieldName>logger</fieldName>
+        </loggerName>
+
+        <message>
+          <fieldName>message</fieldName>
+        </message>
+
+        <stackTrace>
+          <fieldName>stacktrace</fieldName>
+        </stackTrace>
+      </providers>
+    </encoder>
+  </appender>
+
+  <!-- Root: console only -->
+  <root level="INFO">
+    <appender-ref ref="console"/>
+  </root>
+
+  <!-- Suppress noisy libraries to prevent excessive string allocation from debug logging -->
+  <logger name="reactor" level="WARN"/>
+  <logger name="io.netty" level="WARN"/>
+  <logger name="org.springframework.web.reactive" level="WARN"/>
+  <logger name="org.springframework.security" level="WARN"/>
+
+</configuration>
