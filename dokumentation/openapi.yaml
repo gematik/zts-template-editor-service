@@ -3,30 +3,76 @@ info:
   title: Template Editor Service
   version: v1
 servers:
-- url: http://localhost:8080
-  description: Generated server url
+  - url: http://localhost:8080
+    description: Generated server url
 security:
-- bearerAuth: []
+  - bearerAuth: []
 tags:
-- name: Projects
-  description: Lists GitLab projects the current authenticated user has access to.
-- name: Workspaces Comments
-  description: Kommentare und Replies für Merge-Request Reviews
-- name: Versions
-  description: List terminology versions for a given project and branch
-- name: Reviews
-  description: "Merge-Request Reviews (Liste, Approve + Merge)"
-- name: Workspaces
-  description: Workspace / branch handling and committing changes for terminology
-    packages
-- name: Auth
-  description: Authentication-related information for the current oauth2-proxy authenticated
-    user.
+  - name: Projects
+    description: Lists GitLab projects the current authenticated user has access to.
+  - name: Workspaces Comments
+    description: Kommentare und Replies für Merge-Request Reviews
+  - name: Versions
+    description: List terminology versions for a given project and branch
+  - name: Reviews
+    description: "Merge-Request Reviews (Liste, Approve + Merge)"
+  - name: Workspaces
+    description: Workspace / branch handling and committing changes for terminology
+      packages
+  - name: Auth
+    description: Authentication-related information for the current oauth2-proxy authenticated
+      user.
 paths:
+  /workspaces/review:
+    post:
+      tags:
+        - Workspaces
+      summary: Start review for workspace changes
+      description: Opens a merge request.
+      operationId: review
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRequest"
+        required: true
+      responses:
+        "200":
+          description: Merge request successfully opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeRequestRef"
+        "400":
+          description: Bad Request – validation failed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MergeRequestRef"
+        "401":
+          description: Unauthorized – missing or invalid Bearer token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MergeRequestRef"
+        "403":
+          description: Forbidden
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MergeRequestRef"
+        "500":
+          description: Internal Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MergeRequestRef"
+      security:
+        - bearerAuth: []
   /workspaces/commit:
     post:
       tags:
-      - Workspaces
+        - Workspaces
       summary: Commit workspace changes
       description: Commits changes for a workspace (branch) using the given list of
         file changes. Optionally opens a merge request.
@@ -69,52 +115,52 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommitResponse"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /workspaces/commitFile:
     post:
       tags:
-      - Workspaces
+        - Workspaces
       summary: Upload File and commit it to a workspace
       description: Uploads a file as a single repository file and commits it to the
         given workspace (branch). The file is stored as base64 in the commit request.
         Optionally opens a merge request.
       operationId: commitFile
       parameters:
-      - name: repositoryId
-        in: query
-        description: GitLab repository / project identifier
-        required: true
-        example: 1234
-      - name: branch
-        in: query
-        description: Target branch to commit to
-        required: true
-        example: feature/new-terminology
-      - name: version
-        in: query
-        description: Terminology package version
-        required: true
-        example: 1.0.3
-      - name: message
-        in: query
-        description: Commit message
-        required: true
-        example: Upload workspace.zip
-      - name: action
-        in: query
-        description: Commit action for the file
-        required: true
-        schema:
-          type: string
-          enum:
-          - create
-          - update
-        example: update
-      - name: fileName
-        in: query
-        description: Target file name in repository
-        required: true
-        example: workspace.zip
+        - name: repositoryId
+          in: query
+          description: GitLab repository / project identifier
+          required: true
+          example: 1234
+        - name: branch
+          in: query
+          description: Target branch to commit to
+          required: true
+          example: feature/new-terminology
+        - name: version
+          in: query
+          description: Terminology package version
+          required: true
+          example: 1.0.3
+        - name: message
+          in: query
+          description: Commit message
+          required: true
+          example: Upload workspace.zip
+        - name: action
+          in: query
+          description: Commit action for the file
+          required: true
+          schema:
+            type: string
+            enum:
+              - create
+              - update
+          example: update
+        - name: fileName
+          in: query
+          description: Target file name in repository
+          required: true
+          example: workspace.zip
       requestBody:
         content:
           multipart/form-data:
@@ -141,8 +187,8 @@ paths:
                   type: string
                   description: Commit action for the file
                   enum:
-                  - create
-                  - update
+                    - create
+                    - update
                 file:
                   type: string
                   format: binary
@@ -151,13 +197,13 @@ paths:
                   description: Target file name in repository
                   pattern: "^(?!.*\\.\\.)(?!.*[\\\\/])[A-Za-z0-9._;-]+$"
               required:
-              - action
-              - branch
-              - file
-              - fileName
-              - message
-              - repositoryId
-              - version
+                - action
+                - branch
+                - file
+                - fileName
+                - message
+                - repositoryId
+                - version
       responses:
         "200":
           description: File successfully committed
@@ -190,49 +236,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommitResponse"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /workspaces/comments:
     get:
       tags:
-      - Workspaces Comments
+        - Workspaces Comments
       summary: Kommentare eines Merge Requests laden
       description: Liest alle nicht-System-Kommentare aus GitLab Discussions und mappt
         sie in das interne CommentsPayload.
       operationId: getComments
       parameters:
-      - name: repositoryId
-        in: query
-        description: GitLab Project/Repository ID
-        required: true
-        schema:
-          type: string
-          pattern: "^[0-9]+$"
-        example: 12345
-      - name: mrId
-        in: query
-        description: Merge Request IID
-        required: true
-        schema:
-          type: integer
-          format: int32
-          minimum: 1
-        example: 17
-      - name: branch
-        in: query
-        description: Branch-Name
-        required: true
-        schema:
-          type: string
-          pattern: "^[A-Za-z0-9._/-]+$"
-        example: feature/my-branch
-      - name: version
-        in: query
-        description: Version/Tag des Templates (für Mapping/Resolver)
-        required: true
-        schema:
-          type: string
-          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
-        example: 1.2.3
+        - name: repositoryId
+          in: query
+          description: GitLab Project/Repository ID
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+          example: 12345
+        - name: mrId
+          in: query
+          description: Merge Request IID
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+          example: 17
+        - name: branch
+          in: query
+          description: Branch-Name
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9._/-]+$"
+          example: feature/my-branch
+        - name: version
+          in: query
+          description: Version/Tag des Templates (für Mapping/Resolver)
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+          example: 1.2.3
       responses:
         "200":
           description: Kommentare erfolgreich geladen
@@ -271,10 +317,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommentsPayload"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
     post:
       tags:
-      - Workspaces Comments
+        - Workspaces Comments
       summary: Inline-Kommentar erstellen
       description: Erstellt eine neue GitLab Discussion an einer Dateiposition (newPath
         + newLine).
@@ -323,11 +369,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommentCreateResponse"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /workspaces/comments/reply:
     post:
       tags:
-      - Workspaces Comments
+        - Workspaces Comments
       summary: Auf Thread antworten (und optional resolven)
       description: "Erstellt eine Note in einer bestehenden Discussion. Wenn resolved=true,\
         \ wird der Thread anschließend resolved."
@@ -376,30 +422,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommentCreateResponse"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /reviews/approve:
     post:
       tags:
-      - Reviews
+        - Reviews
       summary: Approve und Auto-Merge triggern
       description: Führt zuerst Approve aus und triggert danach das Merge (should_remove_source_branch=true).
         Response ist aktuell ein String-Text.
       operationId: approveAndMergeMR
       parameters:
-      - name: projectId
-        in: query
-        required: true
-        schema:
-          type: integer
-          format: int64
-          minimum: 1
-      - name: mrId
-        in: query
-        required: true
-        schema:
-          type: integer
-          format: int64
-          minimum: 1
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: mrId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
       responses:
         "200":
           description: Approve + Merge wurde getriggert
@@ -438,24 +484,25 @@ paths:
               schema:
                 type: string
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /workspaces:
     get:
       tags:
-      - Workspaces
+        - Workspaces
       summary: List branches (workspaces) for a terminology package
-      description: Returns all branches (workspaces) that contain the given package
-        and version in the repository.
+      description: "Returns all branches (workspaces) that contain the given package\
+        \ and version in the repository.Includes the latest GitLab pipeline for each\
+        \ branch, if available."
       operationId: listBranches
       parameters:
-      - name: repositoryId
-        in: query
-        description: GitLab repository / project identifier
-        required: true
-        schema:
-          type: string
-          pattern: "^[0-9]+$"
-        example: 1234
+        - name: repositoryId
+          in: query
+          description: GitLab repository / project identifier
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+          example: 1234
       responses:
         "200":
           description: Branches successfully listed
@@ -498,41 +545,41 @@ paths:
                 items:
                   $ref: "#/components/schemas/BranchItem"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /workspaces/openByMR:
     get:
       tags:
-      - Workspaces
+        - Workspaces
       summary: Open workspace by merge request
       description: Loads workspace details for the branch associated with the given
         merge request.
       operationId: openByMr
       parameters:
-      - name: projectId
-        in: query
-        description: GitLab project identifier of the merge request
-        required: true
-        schema:
-          type: string
-          pattern: "^[0-9]+$"
-        example: 1234
-      - name: mrId
-        in: query
-        description: Merge request IID (internal ID within the project)
-        required: true
-        schema:
-          type: integer
-          format: int32
-          minimum: 1
-        example: 42
-      - name: version
-        in: query
-        description: Terminology package version
-        required: true
-        schema:
-          type: string
-          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
-        example: 1.0.3
+        - name: projectId
+          in: query
+          description: GitLab project identifier of the merge request
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+          example: 1234
+        - name: mrId
+          in: query
+          description: Merge request IID (internal ID within the project)
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+          example: 42
+        - name: version
+          in: query
+          description: Terminology package version
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+          example: 1.0.3
       responses:
         "200":
           description: Workspace successfully loaded
@@ -571,40 +618,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/WorkspaceDetails"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /workspaces/details:
     get:
       tags:
-      - Workspaces
+        - Workspaces
       summary: Get workspace details for a branch
       description: "Returns all workspace files (templates, metadata, changelog, notes,\
         \ …) for the given repository/branch/version."
       operationId: details
       parameters:
-      - name: repositoryId
-        in: query
-        description: GitLab repository / project identifier
-        required: true
-        schema:
-          type: string
-          pattern: "^[0-9]+$"
-        example: 1234
-      - name: branch
-        in: query
-        description: Branch name (workspace) to open
-        required: true
-        schema:
-          type: string
-          pattern: "^[A-Za-z0-9._/-]+$"
-        example: feature/new-terminology
-      - name: version
-        in: query
-        description: Terminology package version
-        required: true
-        schema:
-          type: string
-          pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
-        example: 1.0.3
+        - name: repositoryId
+          in: query
+          description: GitLab repository / project identifier
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+          example: 1234
+        - name: branch
+          in: query
+          description: Branch name (workspace) to open
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9._/-]+$"
+          example: feature/new-terminology
+        - name: version
+          in: query
+          description: Terminology package version
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$"
+          example: 1.0.3
       responses:
         "200":
           description: Workspace successfully loaded
@@ -637,40 +684,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/WorkspaceDetails"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /reviews:
     get:
       tags:
-      - Reviews
+        - Reviews
       summary: Merge Requests listen
       description: Listet Merge Requests aus GitLab (Gruppen-scope inkl. Subgroups).
       operationId: listReviews
       parameters:
-      - name: state
-        in: query
-        required: false
-        schema:
-          type: string
-          default: opened
-          pattern: ^(opened|merged|closed|all)$
-      - name: page
-        in: query
-        required: false
-        schema:
-          type: integer
-          format: int32
-          default: 1
-          maximum: 10000
-          minimum: 1
-      - name: pageSize
-        in: query
-        required: false
-        schema:
-          type: integer
-          format: int32
-          default: 50
-          maximum: 200
-          minimum: 1
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            default: opened
+            pattern: ^(opened|merged|closed|all)$
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+            maximum: 10000
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            maximum: 200
+            minimum: 1
       responses:
         "200":
           description: Liste von Reviews
@@ -713,56 +760,56 @@ paths:
                 items:
                   $ref: "#/components/schemas/ReviewsOverviewItem"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /projects:
     get:
       tags:
-      - Projects
+        - Projects
       summary: List GitLab projects
       description: "Returns a paginated list of GitLab projects, optionally searchable\
         \ and sortable."
       operationId: listProjects
       parameters:
-      - name: search
-        in: query
-        description: Filters projects by substring match in name
-        required: false
-        schema:
-          type: string
-          pattern: "^[\\p{L}0-9 _\\-.]*$"
-        example: template
-      - name: sort
-        in: query
-        description: Sort order of projects
-        required: false
-        schema:
-          type: string
-          enum:
-          - lastModified
-          - title
-        example: lastModified
-      - name: page
-        in: query
-        description: 1-based page index
-        required: false
-        schema:
-          type: integer
-          format: int32
-          default: 1
-          maximum: 10000
-          minimum: 1
-        example: 1
-      - name: pageSize
-        in: query
-        description: Number of items per page (1–200)
-        required: false
-        schema:
-          type: integer
-          format: int32
-          default: 50
-          maximum: 200
-          minimum: 1
-        example: 50
+        - name: search
+          in: query
+          description: Filters projects by substring match in name
+          required: false
+          schema:
+            type: string
+            pattern: "^[\\p{L}0-9 _\\-.]*$"
+          example: template
+        - name: sort
+          in: query
+          description: Sort order of projects
+          required: false
+          schema:
+            type: string
+            enum:
+              - lastModified
+              - title
+          example: lastModified
+        - name: page
+          in: query
+          description: 1-based page index
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+            maximum: 10000
+            minimum: 1
+          example: 1
+        - name: pageSize
+          in: query
+          description: Number of items per page (1–200)
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            maximum: 200
+            minimum: 1
+          example: 50
       responses:
         "200":
           description: Projects successfully listed
@@ -805,32 +852,32 @@ paths:
                 items:
                   $ref: "#/components/schemas/ProjectItem"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /projects/{projectId}/versions:
     get:
       tags:
-      - Versions
+        - Versions
       summary: List terminology versions for a project
       description: "Returns all known terminology versions for the given project.\
         \ If `workspace` is not provided, the project's default branch is used."
       operationId: listVersions
       parameters:
-      - name: projectId
-        in: path
-        description: GitLab project numeric identifier (ID)
-        required: true
-        schema:
-          type: string
-          pattern: "^[0-9]+$"
-        example: 1234
-      - name: workspace
-        in: query
-        description: "Branch name (workspace). If omitted, the default branch is used."
-        required: false
-        schema:
-          type: string
-          pattern: "^[A-Za-z0-9._/-]+$"
-        example: feature/new-terminology
+        - name: projectId
+          in: path
+          description: GitLab project numeric identifier (ID)
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+          example: 1234
+        - name: workspace
+          in: query
+          description: "Branch name (workspace). If omitted, the default branch is used."
+          required: false
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9._/-]+$"
+          example: feature/new-terminology
       responses:
         "200":
           description: Versions successfully listed
@@ -873,11 +920,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/VersionItem"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /auth/userinfo:
     get:
       tags:
-      - Auth
+        - Auth
       summary: Get current user information
       description: "Returns information about the currently authenticated user, including\
         \ backend reviewer mapping."
@@ -914,32 +961,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserDetailsSub"
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /projects/{projectId}/versions/{version}:
     delete:
       tags:
-      - Versions
+        - Versions
       summary: Delete a terminology version
       operationId: deleteVersion
       parameters:
-      - name: projectId
-        in: path
-        required: true
-        schema:
-          type: string
-          pattern: "^[0-9]+$"
-      - name: version
-        in: path
-        required: true
-        schema:
-          type: string
-          pattern: "^[A-Za-z0-9._-]+$"
-      - name: workspace
-        in: query
-        required: false
-        schema:
-          type: string
-          pattern: "^[A-Za-z0-9._/-]+$"
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9._-]+$"
+        - name: workspace
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9._/-]+$"
       responses:
         "204":
           description: Deleted
@@ -954,9 +1001,57 @@ paths:
         "500":
           description: Internal Server Error
       security:
-      - bearerAuth: []
+        - bearerAuth: []
 components:
   schemas:
+    ReviewRequest:
+      type: object
+      properties:
+        repositoryId:
+          type: string
+          writeOnly: true
+        branch:
+          type: string
+        target:
+          type:
+            - string
+            - "null"
+        title:
+          type:
+            - string
+            - "null"
+        description:
+          type:
+            - string
+            - "null"
+        labels:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+        reviewers:
+          type:
+            - array
+            - "null"
+          items: {}
+        ready:
+          type: boolean
+        repo:
+          type: string
+    MergeRequestRef:
+      type: object
+      description: Merge request that was created for the commit
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Merge request IID
+          example: 42
+        webUrl:
+          type: string
+          description: GitLab web URL of the merge request
+          example: https://gitlab.example.com/group/project/-/merge_requests/42
     CommitChange:
       type: object
       description: Single file change that will be part of a workspace commit
@@ -965,23 +1060,23 @@ components:
           type: string
           description: Type of file operation
           enum:
-          - create
-          - update
-          - delete
+            - create
+            - update
+            - delete
           example: update
         type:
           type: string
           description: Logical file type within the terminology package
           enum:
-          - template
-          - template_markdown
-          - package_template
-          - metadata_package
-          - changelogs
-          - package_markdown
-          - update_index_url_version
-          - download_conditions
-          - input_file
+            - template
+            - template_markdown
+            - package_template
+            - metadata_package
+            - changelogs
+            - package_markdown
+            - update_index_url_version
+            - download_conditions
+            - input_file
           example: template
         fileName:
           type: string
@@ -990,16 +1085,16 @@ components:
           minLength: 1
         content:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
           description: File content. Required for create/update. Omitted for delete.
           example: "{ \"resourceType\": \"Bundle\", ... }"
         encoding:
           type: string
           description: Encoding of the content
           enum:
-          - text
-          - base64
+            - text
+            - base64
           example: text
         contentValidForAction:
           type: boolean
@@ -1010,10 +1105,10 @@ components:
         fileNameValidForType:
           type: boolean
       required:
-      - action
-      - encoding
-      - fileName
-      - type
+        - action
+        - encoding
+        - fileName
+        - type
     CommitRequest:
       type: object
       description: Commit request for a workspace / branch in a repository
@@ -1054,10 +1149,10 @@ components:
           description: "If true, a merge request will be created for this commit"
           example: true
       required:
-      - branch
-      - message
-      - repositoryId
-      - version
+        - branch
+        - message
+        - repositoryId
+        - version
     CommitResponse:
       type: object
       description: Response after committing workspace changes
@@ -1071,22 +1166,10 @@ components:
           description: Branch head after the commit (usually the same SHA as commitId)
           example: 5e8c1f0b3a9d4c2e7f1b0a...
         mergeRequest:
+          description: "Merge request created for this commit, if any"
           oneOf:
-          - $ref: "#/components/schemas/MergeRequestRef"
-          - type: "null"
-    MergeRequestRef:
-      type: object
-      description: Merge request that was created for the commit
-      properties:
-        id:
-          type: integer
-          format: int32
-          description: Merge request IID
-          example: 42
-        webUrl:
-          type: string
-          description: GitLab web URL of the merge request
-          example: https://gitlab.example.com/group/project/-/merge_requests/42
+            - $ref: "#/components/schemas/MergeRequestRef"
+            - type: "null"
     CommentCreateRequest:
       type: object
       description: Request zum Erstellen eines Merge-Request Inline-Kommentars (GitLab
@@ -1121,15 +1204,15 @@ components:
           description: "Art der kommentierten Resource. Bestimmt, wie `fileName` in\
             \ einen GitLab-Pfad gemappt wird."
           enum:
-          - template
-          - template_markdown
-          - package_template
-          - metadata_package
-          - changelogs
-          - package_markdown
-          - update_index_url_version
-          - download_conditions
-          - input_file
+            - template
+            - template_markdown
+            - package_template
+            - metadata_package
+            - changelogs
+            - package_markdown
+            - update_index_url_version
+            - download_conditions
+            - input_file
           example: template
         fileName:
           type: string
@@ -1138,8 +1221,8 @@ components:
           minLength: 1
         line:
           type:
-          - integer
-          - "null"
+            - integer
+            - "null"
           format: int32
           description: Zeilennummer in der Diff-Position. Muss gesetzt sein.
           example: 42
@@ -1151,14 +1234,14 @@ components:
           minLength: 1
           pattern: "^[^\\p{Cntrl}]+$"
       required:
-      - body
-      - branch
-      - fileName
-      - line
-      - mrId
-      - repositoryId
-      - type
-      - version
+        - body
+        - branch
+        - fileName
+        - line
+        - mrId
+        - repositoryId
+        - type
+        - version
     CommentCreateResponse:
       type: object
       description: Response nach dem Erstellen eines Kommentars oder Replies. Enthält
@@ -1205,9 +1288,9 @@ components:
           minLength: 1
           pattern: "^[0-9]+$"
       required:
-      - body
-      - repo
-      - threadId
+        - body
+        - repo
+        - threadId
     BranchItem:
       type: object
       description: Represents a workspace branch for a terminology package
@@ -1218,16 +1301,16 @@ components:
           example: feature/new-terminology
         lastModified:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
           format: date-time
           description: Timestamp of the last modification in this branch related to
             the package
           example: 2024-10-31T14:23:00+01:00
         author:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
           description: Author of the last relevant change
           example: max.mustermann
         isDefaultBranch:
@@ -1239,6 +1322,9 @@ components:
         mergeRequest:
           $ref: "#/components/schemas/MergeRequestRef"
           writeOnly: true
+        pipeline:
+          $ref: "#/components/schemas/PipelineRef"
+          writeOnly: true
         default:
           type: boolean
           description: Boolean if branch is default branch
@@ -1249,8 +1335,40 @@ components:
           example: true
         mergeRequestRef:
           oneOf:
-          - $ref: "#/components/schemas/MergeRequestRef"
-          - type: "null"
+            - $ref: "#/components/schemas/MergeRequestRef"
+            - type: "null"
+        pipelineRef:
+          oneOf:
+            - $ref: "#/components/schemas/PipelineRef"
+            - type: "null"
+    PipelineRef:
+      type: object
+      description: Pipeline that was created for the commit
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Pipeline IID
+          example: 42
+        status:
+          type: string
+          description: Status of the latest pipeline
+          example: success
+        webUrl:
+          type: string
+          description: GitLab web URL of the latest pipeline
+          example: https://gitlab.example.com/group/project/-/pipelines/latest
+        updatedAt:
+          type: string
+          description: The time at which the pipeline was updated
+          example: 2022-09-21T01:05:50.175Z
+        finishedAt:
+          type:
+            - string
+            - "null"
+          description: "The time at which the pipeline was completed; if the field\
+            \ is missing, then null"
+          example: 2022-09-21T01:05:50.175Z
     InputFile:
       type: object
       properties:
@@ -1349,9 +1467,10 @@ components:
           items:
             $ref: "#/components/schemas/InputFile"
         mergeRequestRef:
+          description: "Associated merge request, if the workspace is linked to one"
           oneOf:
-          - $ref: "#/components/schemas/MergeRequestRef"
-          - type: "null"
+            - $ref: "#/components/schemas/MergeRequestRef"
+            - type: "null"
     CommentItem:
       type: object
       properties:
@@ -1359,34 +1478,34 @@ components:
           type: string
         type:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
           description: Typ der Änderung/Resource. Serialisiert als String gemäß `value`.
           enum:
-          - template
-          - template_markdown
-          - package_template
-          - metadata_package
-          - changelogs
-          - package_markdown
-          - update_index_url_version
-          - download_conditions
-          - input_file
+            - template
+            - template_markdown
+            - package_template
+            - metadata_package
+            - changelogs
+            - package_markdown
+            - update_index_url_version
+            - download_conditions
+            - input_file
         fileName:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
         line:
           type:
-          - integer
-          - "null"
+            - integer
+            - "null"
           format: int32
         body:
           type: string
         author:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
         createdAt:
           type: string
           format: date-time
@@ -1394,8 +1513,8 @@ components:
           type: boolean
         threadId:
           type:
-          - string
-          - "null"
+            - string
+            - "null"
         isInline:
           type: boolean
           writeOnly: true

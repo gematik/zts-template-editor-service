@@ -32,6 +32,7 @@ import de.gematik.zts.templateeditor.domain.workspaces.GitLabCreateCommitReq
 import de.gematik.zts.templateeditor.domain.workspaces.GitLabMergeRequestResp
 import de.gematik.zts.templateeditor.domain.workspaces.GitLabProjectResp
 import de.gematik.zts.templateeditor.domain.workspaces.MergeRequestRef
+import de.gematik.zts.templateeditor.domain.workspaces.PipelineRef
 import de.gematik.zts.templateeditor.domain.workspaces.WorkspaceDetails
 import de.gematik.zts.templateeditor.gitlab.commits.GitLabActionBuilder
 import de.gematik.zts.templateeditor.gitlab.exceptions.http.client.GitLabNotFoundException
@@ -40,6 +41,7 @@ import de.gematik.zts.templateeditor.gitlab.fetcher.DetailFetcher
 import de.gematik.zts.templateeditor.gitlab.mapping.workspace.GitLabBranchDto
 import de.gematik.zts.templateeditor.gitlab.mapping.workspace.GitLabCommitMiniDto
 import de.gematik.zts.templateeditor.gitlab.mapping.workspace.GitLabMergeRequestDto
+import de.gematik.zts.templateeditor.gitlab.mapping.workspace.GitLabPipelineDto
 import de.gematik.zts.templateeditor.gitlab.validation.CommitContentProperties
 import de.gematik.zts.templateeditor.gitlab.validation.FileTypeValidator
 import de.gematik.zts.templateeditor.logging.logger
@@ -60,6 +62,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.OffsetDateTime
 import java.util.Base64
+import java.util.Optional
 import java.util.concurrent.Executor
 
 @Component
@@ -524,28 +527,27 @@ class WorkspacesAdapter(
                     .queryParam("per_page", 1)
             }.next()
             .flatMap { dto ->
-                findMergeRequestForBranch(projectId, branchDto.name)
-                    .map { mrRef ->
+                val mergeRequest = findMergeRequestForBranch(projectId, branchDto.name)
+                    .map { Optional.of(it) }
+                    .defaultIfEmpty(Optional.empty())
+
+                val pipeline = findLatestPipelineForBranch(projectId, branchDto.name)
+                    .map { Optional.of(it) }
+                    .defaultIfEmpty(Optional.empty())
+
+                Mono
+                    .zip(mergeRequest, pipeline)
+                    .map { tuple ->
                         BranchItem(
                             branch = branchDto.name,
                             lastModified = dto.committedDate?.let(OffsetDateTime::parse),
                             author = dto.authorName,
                             default = branchDto.default,
                             protected = branchDto.protected,
-                            mergeRequestRef = mrRef,
+                            mergeRequestRef = tuple.t1.orElse(null),
+                            pipelineRef = tuple.t2.orElse(null),
                         )
-                    }.switchIfEmpty(
-                        Mono.just(
-                            BranchItem(
-                                branch = branchDto.name,
-                                lastModified = dto.committedDate?.let(OffsetDateTime::parse),
-                                author = dto.authorName,
-                                default = branchDto.default,
-                                protected = branchDto.protected,
-                                mergeRequestRef = null,
-                            ),
-                        ),
-                    )
+                    }
             }.onErrorResume(GitLabHttpException::class.java) { ex ->
                 if (ex.message?.contains("404") == true) Mono.empty() else Mono.error(ex)
             }
@@ -564,6 +566,26 @@ class WorkspacesAdapter(
             }.mapGitLabErrors()
             .next()
             .map { mr -> MergeRequestRef(id = mr.iid, webUrl = mr.webUrl) }
+            .onErrorResume(GitLabNotFoundException::class.java) { Mono.empty() }
+
+    private fun findLatestPipelineForBranch(
+        projectId: String,
+        branch: String,
+    ): Mono<PipelineRef> =
+        gl
+            .getFlux(clazz = GitLabPipelineDto::class.java) { uri ->
+                uri
+                    .pathSegment("projects", projectId, "pipelines", "latest")
+                    .queryParam("ref", branch)
+            }.mapGitLabErrors()
+            .next()
+            .map { pipeline -> PipelineRef(
+                id = pipeline.iid,
+                status = pipeline.status,
+                webUrl = pipeline.webUrl,
+                updatedAt = pipeline.updatedAt,
+                finishedAt = pipeline.finishedAt
+            ) }
             .onErrorResume(GitLabNotFoundException::class.java) { Mono.empty() }
 
     /**

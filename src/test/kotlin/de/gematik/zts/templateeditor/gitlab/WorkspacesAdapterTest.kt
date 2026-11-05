@@ -198,10 +198,12 @@ class WorkspacesAdapterTest {
         val branchDto = GitLabBranchDto("dev")
         val commitMini = GitLabCommitMiniDto(null, "me")
         val gitLabMergeRequestDto = GitLabMergeRequestDto(1, "url", "dev", "main", "opened")
+        val pipelineDto = GitLabPipelineDto(42, "success", "http://pipeline-url", "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z")
 
         every { gl.getFlux(clazz = GitLabBranchDto::class.java, query = any()) } returns Flux.just(branchDto)
         every { gl.getFlux(clazz = GitLabMergeRequestDto::class.java, query = any()) } returns Flux.just(gitLabMergeRequestDto)
         every { gl.getFlux(clazz = GitLabCommitMiniDto::class.java, query = any()) } returns Flux.just(commitMini)
+        every { gl.getFlux(clazz = GitLabPipelineDto::class.java, query = any()) } returns Flux.just(pipelineDto)
 
         val list = adapter.listBranches("123").collectList().block()!!
 
@@ -215,6 +217,7 @@ class WorkspacesAdapterTest {
     fun `listBranches - builds correct URIs for branches and commits`() {
         val branchDto = GitLabBranchDto("dev")
         val gitLabMergeRequestDto = GitLabMergeRequestDto(1, "url", "dev", "main", "opened")
+        val pipelineDto = GitLabPipelineDto(42, "success", "http://pipeline-url", "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z")
 
         val branchesUriSlot = slot<(UriBuilder) -> UriBuilder>()
         val commitsUriSlot = slot<(UriBuilder) -> UriBuilder>()
@@ -224,6 +227,7 @@ class WorkspacesAdapterTest {
         every { gl.getFlux(clazz = GitLabMergeRequestDto::class.java, query = any()) } returns Flux.just(gitLabMergeRequestDto)
         every { gl.getFlux(clazz = GitLabCommitMiniDto::class.java, query = capture(commitsUriSlot)) } returns
                 Flux.just(GitLabCommitMiniDto("2024-01-01T00:00:00Z", "me"))
+        every { gl.getFlux(clazz = GitLabPipelineDto::class.java, query = any()) } returns Flux.just(pipelineDto)
 
         adapter.listBranches("123").collectList().block()
 
@@ -470,10 +474,12 @@ class WorkspacesAdapterTest {
     fun `listBranches - maps commit information without merge request`() {
         val branchDto = GitLabBranchDto(name = "dev", default = false, protected = false)
         val commitMini = GitLabCommitMiniDto("2024-01-01T00:00:00Z", "me")
+        val pipelineDto = GitLabPipelineDto(42, "success", "http://pipeline-url", "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z")
 
         every { gl.getFlux(clazz = GitLabBranchDto::class.java, query = any()) } returns Flux.just(branchDto)
         every { gl.getFlux(clazz = GitLabCommitMiniDto::class.java, query = any()) } returns Flux.just(commitMini)
         every { gl.getFlux(clazz = GitLabMergeRequestDto::class.java, query = any()) } returns Flux.empty()
+        every { gl.getFlux(clazz = GitLabPipelineDto::class.java, query = any()) } returns Flux.just(pipelineDto)
 
         val list = adapter.listBranches("123").collectList().block()!!
 
@@ -492,10 +498,12 @@ class WorkspacesAdapterTest {
         val branchDto = GitLabBranchDto(name = "dev", default = true, protected = true)
         val commitMini = GitLabCommitMiniDto("2024-01-01T00:00:00Z", "me")
         val mrDto = GitLabMergeRequestDto(42, "http://mr-url", "dev", "main", "opened")
+        val pipelineDto = GitLabPipelineDto(42, "success", "http://pipeline-url", "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z")
 
         every { gl.getFlux(clazz = GitLabBranchDto::class.java, query = any()) } returns Flux.just(branchDto)
         every { gl.getFlux(clazz = GitLabCommitMiniDto::class.java, query = any()) } returns Flux.just(commitMini)
         every { gl.getFlux(clazz = GitLabMergeRequestDto::class.java, query = any()) } returns Flux.just(mrDto)
+        every { gl.getFlux(clazz = GitLabPipelineDto::class.java, query = any()) } returns Flux.just(pipelineDto)
 
         val list = adapter.listBranches("123").collectList().block()!!
 

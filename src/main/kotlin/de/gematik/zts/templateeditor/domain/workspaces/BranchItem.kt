@@ -61,4 +61,6 @@ data class BranchItem(
     val protected: Boolean = false,
     @param:JsonProperty("mergeRequest")
     val mergeRequestRef: MergeRequestRef? = null,
+    @param:JsonProperty("pipeline")
+    val pipelineRef: PipelineRef? = null,
 )
