@@ -1,6 +1,4 @@
-################
-# ! Do not use variables in the FROM instruction due to incompatibility with dependabot
-FROM gematik1/osadl-alpine-openjdk25-jre:1.0.8@sha256:257288f1dc49eb6984140869d104c0ea9ef884854eb357474a7b9ced7d01ef9e
+FROM gematik1/osadl-alpine-openjdk25-jre@sha256:b562d62fdbfc77fa00bfc98b5bde97cc6add0e0c32da351b3acb97ffef1adce3
 
 # The STOPSIGNAL instruction sets the system call signal that will be sent to the container to exit
 # SIGTERM = 15 - https://de.wikipedia.org/wiki/Signal_(Unix)

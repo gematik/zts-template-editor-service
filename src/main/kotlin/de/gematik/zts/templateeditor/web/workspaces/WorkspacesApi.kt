@@ -57,7 +57,8 @@ import reactor.core.publisher.Mono
 interface WorkspacesApi {
     @Operation(
         summary = "List branches (workspaces) for a terminology package",
-        description = "Returns all branches (workspaces) that contain the given package and version in the repository.",
+        description = "Returns all branches (workspaces) that contain the given package and version in the repository." +
+        "Includes the latest GitLab pipeline for each branch, if available.",
     )
     @BearerAuth
     @StandardApiErrors

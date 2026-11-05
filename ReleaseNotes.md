@@ -1,10 +1,17 @@
 # Release Notes
 
+## 1.1.0 (2026-11)
+
+### changed
+
+- Updated dependencies
+- Added pipeline information per branch to the GET /workspaces response
+
 ## 1.0.5 (2026-09)
 
 ### changed
 
-- added Git Args to Dockerfile
+- Added Git Args to Dockerfile
 
 ## 1.0.4 (2026-09)
 

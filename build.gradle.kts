@@ -34,7 +34,7 @@ plugins {
 }
 
 group = "de.gematik.zts"
-version = "1.0.5-b103"
+version = "1.1.0-b114"
 description = "template-editor-service"
 
 kotlin {
