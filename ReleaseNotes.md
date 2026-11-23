@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.1.1 (2026-11)
+
+- Updated dependencies and docker image
+
 ## 1.1.0 (2026-11)
 
 ### changed
