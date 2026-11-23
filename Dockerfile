@@ -1,4 +1,4 @@
-FROM gematik1/osadl-alpine-openjdk25-jre@sha256:b562d62fdbfc77fa00bfc98b5bde97cc6add0e0c32da351b3acb97ffef1adce3
+FROM gematik1/osadl-alpine-openjdk25-jre@sha256:f8b9183ed95b2d695729093887391fe30f77ff195724075ac48cb27c130f5a63
 
 # The STOPSIGNAL instruction sets the system call signal that will be sent to the container to exit
 # SIGTERM = 15 - https://de.wikipedia.org/wiki/Signal_(Unix)

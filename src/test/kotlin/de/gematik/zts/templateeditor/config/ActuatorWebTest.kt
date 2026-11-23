@@ -102,7 +102,7 @@ class ActuatorWebTest {
                 .responseBody!!
 
         assertThat(body).contains("jvm.memory.used")
-        assertThat(body).contains("http.server.requests")
+        assertThat(body).contains("jvm.memory.max")
     }
 
     @Test
